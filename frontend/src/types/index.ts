@@ -46,6 +46,7 @@ export interface Task {
   createdAt: Date;
   updatedAt: Date;
   dueDate?: Date;
+  priority?: 'low' | 'medium' | 'high';
 }
 
 // Form Data Models
@@ -63,6 +64,7 @@ export interface TaskForm {
   description?: string;
   status: 'todo' | 'in-progress' | 'done';
   dueDate?: Date;
+  priority?: 'low' | 'medium' | 'high';
 }
 
 // State Management Models

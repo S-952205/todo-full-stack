@@ -138,10 +138,39 @@ class ApiClient {
         }
       }
 
-      const data = await response.json();
+      // Check if response has content before trying to parse JSON
+      const contentType = response.headers.get('content-type');
+      let data = {};
+
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          // If JSON parsing fails but response is OK, return empty object
+          if (response.ok) {
+            data = {};
+          } else {
+            throw jsonError;
+          }
+        }
+      } else if (response.status !== 204) { // 204 No Content
+        // For non-JSON responses that aren't 204, try to get text
+        try {
+          const text = await response.text();
+          data = text ? { message: text } : {};
+        } catch (textError) {
+          // If text parsing also fails but response is OK, return empty object
+          if (response.ok) {
+            data = {};
+          } else {
+            throw textError;
+          }
+        }
+      }
+
       return {
         success: response.ok,
-        ...(response.ok ? { data } : { error: data.message || 'Request failed', message: data.message })
+        ...(response.ok ? { data } : { error: (data as any).message || 'Request failed', message: (data as any).message })
       };
     } catch (error: any) {
       return {

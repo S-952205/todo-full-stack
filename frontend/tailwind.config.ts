@@ -6,6 +6,7 @@ const config: Config = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'selector', // Enable dark mode using the 'dark' class on the parent element
   theme: {
     extend: {
       backgroundImage: {

@@ -16,6 +16,7 @@ export const TaskFormSchema = z.object({
   description: z.string().max(1000).optional(),
   status: z.enum(['todo', 'in-progress', 'done']),
   dueDate: z.coerce.date().optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
 });
 
 // Export all schemas

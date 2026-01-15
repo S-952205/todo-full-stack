@@ -6,7 +6,9 @@
       "Bash(then ls \"C:/Projects/todo-full-stack/specs/002-frontend-auth/checklists\")",
       "Bash(else echo \"No checklists directory found\")",
       "Bash(fi)",
-      "Bash(.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)"
+      "Bash(.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)",
+      "Bash(dir \"frontend\\\\src\\\\app\")",
+      "Bash(dir \"frontend\\\\src\\\\app\\\\dashboard\")"
     ]
   }
 }
