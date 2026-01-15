@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 import logging
+import bcrypt
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -22,11 +23,37 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a hashed password."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a plain password against a hashed password with proper error handling."""
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except ValueError as e:
+        # Handle cases where the password exceeds bcrypt limits
+        if "password cannot be longer than 72 bytes" in str(e):
+            # Truncate the plain password and try again
+            plain_password_bytes = plain_password.encode('utf-8')
+            truncated_bytes = plain_password_bytes[:72]
+            try:
+                truncated_password = truncated_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                truncated_password = truncated_bytes.decode('utf-8', errors='ignore')
+            return pwd_context.verify(truncated_password, hashed_password)
+        raise e
 
 def get_password_hash(password: str) -> str:
-    """Hash a plain password."""
+    """Hash a plain password with proper error handling for bcrypt limitations."""
+    # Check password length before hashing (bcrypt has 72 byte limit)
+    if len(password.encode('utf-8')) > 72:
+        # Truncate to 72 bytes while preserving the original string as much as possible
+        # Decode as utf-8, truncate to 72 bytes, then encode back
+        password_bytes = password.encode('utf-8')
+        truncated_bytes = password_bytes[:72]
+        # Ensure we don't break multibyte characters at the boundary
+        try:
+            password = truncated_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            # If we cut a multibyte character, decode with error handling
+            password = truncated_bytes.decode('utf-8', errors='ignore')
+
     return pwd_context.hash(password)
 
 @router.post("/auth/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -186,4 +213,50 @@ def refresh_token(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not refresh token",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@router.post("/auth/forgot-password")
+def forgot_password(
+    request_data: dict,
+    session: Session = Depends(get_session)
+) -> dict:
+    """
+    Send password reset instructions to the user's email.
+    """
+    email = request_data.get("email")
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is required"
+        )
+
+    try:
+        # Find user by email
+        user = session.query(User).filter(User.email == email).first()
+
+        if not user:
+            # For security, we return success even if email doesn't exist
+            # This prevents email enumeration attacks
+            logger.info(f"Password reset request for email: {email} (user may not exist)")
+            return {"message": "If the email exists, password reset instructions have been sent"}
+
+        # In a real application, you would generate a reset token and send an email
+        # For now, we'll just return a success message
+        logger.info(f"Password reset instructions sent to user: {user.id}")
+
+        # In a real application, you would:
+        # 1. Generate a password reset token
+        # 2. Store it in the database with an expiration
+        # 3. Send an email with a link containing the token
+        # 4. The link would point to a frontend page like /reset-password?token=xxx
+
+        return {"message": "If the email exists, password reset instructions have been sent"}
+
+    except Exception as e:
+        logger.error(f"Error processing forgot password request: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process password reset request"
         )

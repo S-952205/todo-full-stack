@@ -149,14 +149,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (response.ok) {
+        // Backend returns TokenResponse format: {access_token, token_type, user}
         const userSession: UserSession = {
-          ...data.data.user,
-          accessToken: data.data.accessToken,
-          refreshToken: data.data.refreshToken,
+          ...data.user,
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token || '', // refresh token might not be provided
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: data.user.createdAt || new Date(),
+          updatedAt: data.user.updatedAt || new Date(),
         };
 
         // Store session in localStorage
@@ -164,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         dispatch({ type: 'LOGIN_SUCCESS', payload: userSession });
       } else {
-        const errorMessage = data.message || 'Login failed';
+        const errorMessage = data.detail || data.message || 'Login failed';
         dispatch({ type: 'LOGIN_ERROR', payload: errorMessage });
         throw new Error(errorMessage);
       }
@@ -190,7 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (response.ok) {
         // After successful signup, we should log the user in
         // First, try to login the user with provided credentials
         const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
@@ -203,14 +204,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const loginData = await loginResponse.json();
 
-        if (loginResponse.ok && loginData.success) {
+        if (loginResponse.ok) {
+          // Backend returns TokenResponse format: {access_token, token_type, user}
           const userSession: UserSession = {
-            ...loginData.data.user,
-            accessToken: loginData.data.accessToken,
-            refreshToken: loginData.data.refreshToken,
+            ...loginData.user,
+            accessToken: loginData.access_token,
+            refreshToken: loginData.refresh_token || '', // refresh token might not be provided
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
-            createdAt: new Date(loginData.data.user.createdAt),
-            updatedAt: new Date(loginData.data.user.updatedAt),
+            createdAt: loginData.user.createdAt || new Date(),
+            updatedAt: loginData.user.updatedAt || new Date(),
           };
 
           // Store session in localStorage
@@ -218,12 +220,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           dispatch({ type: 'LOGIN_SUCCESS', payload: userSession });
         } else {
-          const errorMessage = loginData.message || 'Login failed after signup';
+          const errorMessage = loginData.detail || loginData.message || 'Login failed after signup';
           dispatch({ type: 'LOGIN_ERROR', payload: errorMessage });
           throw new Error(errorMessage);
         }
       } else {
-        const errorMessage = data.message || 'Signup failed';
+        const errorMessage = data.detail || data.message || 'Signup failed';
         dispatch({ type: 'SIGNUP_ERROR', payload: errorMessage });
         throw new Error(errorMessage);
       }

@@ -21,12 +21,19 @@ const TasksPage: React.FC = () => {
     const fetchTasks = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.get<Task[]>('/api/tasks');
+        const response = await apiClient.get<Task[]>('/api/v1/tasks');
 
-        if (response.data.success && response.data.data) {
-          setTasks(response.data.data);
+        if (response.success && response.data) {
+          // Transform backend response to frontend model
+          const transformedTasks = response.data.map(task => ({
+            ...task,
+            status: task.completed ? 'done' : 'todo', // Map completed boolean to status
+            createdAt: new Date(task.createdAt), // Ensure date objects
+            updatedAt: new Date(task.updatedAt || task.createdAt), // Ensure date objects
+          }));
+          setTasks(transformedTasks);
         } else {
-          setError(response.data.message || 'Failed to fetch tasks');
+          setError(response.message || response.error || 'Failed to fetch tasks');
         }
       } catch (err: any) {
         setError(err.message || 'An error occurred while fetching tasks');
@@ -44,28 +51,48 @@ const TasksPage: React.FC = () => {
   // Handle form submission (create/update)
   const handleFormSubmit = async (formData: any) => {
     try {
+      // Transform frontend model to backend model (status -> completed)
+      const transformedData = {
+        ...formData,
+        completed: formData.status === 'done' // Convert status to completed boolean
+      };
+
       if (editingTask) {
         // Update existing task
-        const response = await apiClient.put<Task>(`/api/tasks/${editingTask.id}`, formData);
+        const response = await apiClient.put<Task>(`/api/v1/tasks/${editingTask.id}`, transformedData);
 
-        if (response.data.success) {
+        if (response.success) {
+          // Transform backend response to frontend model
+          const updatedTask = {
+            ...response.data,
+            status: response.data.completed ? 'done' : 'todo', // Map completed boolean to status
+            createdAt: new Date(response.data.createdAt), // Ensure date objects
+            updatedAt: new Date(response.data.updatedAt || response.data.createdAt), // Ensure date objects
+          };
           setTasks(tasks.map(task =>
-            task.id === editingTask.id ? response.data.data : task
+            task.id === editingTask.id ? updatedTask : task
           ));
           setEditingTask(null);
           setShowForm(false);
         } else {
-          setError(response.data.message || 'Failed to update task');
+          setError(response.message || response.error || 'Failed to update task');
         }
       } else {
         // Create new task
-        const response = await apiClient.post<Task>('/api/tasks', formData);
+        const response = await apiClient.post<Task>('/api/v1/tasks', transformedData);
 
-        if (response.data.success) {
-          setTasks([...tasks, response.data.data]);
+        if (response.success) {
+          // Transform backend response to frontend model
+          const newTask = {
+            ...response.data,
+            status: response.data.completed ? 'done' : 'todo', // Map completed boolean to status
+            createdAt: new Date(response.data.createdAt), // Ensure date objects
+            updatedAt: new Date(response.data.updatedAt || response.data.createdAt), // Ensure date objects
+          };
+          setTasks([...tasks, newTask]);
           setShowForm(false);
         } else {
-          setError(response.data.message || 'Failed to create task');
+          setError(response.message || response.error || 'Failed to create task');
         }
       }
     } catch (err: any) {
@@ -78,12 +105,12 @@ const TasksPage: React.FC = () => {
   const handleDeleteTask = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this task?')) {
       try {
-        const response = await apiClient.delete(`/api/tasks/${id}`);
+        const response = await apiClient.delete(`/api/v1/tasks/${id}`);
 
-        if (response.data.success) {
+        if (response.success) {
           setTasks(tasks.filter(task => task.id !== id));
         } else {
-          setError(response.data.message || 'Failed to delete task');
+          setError(response.message || response.error || 'Failed to delete task');
         }
       } catch (err: any) {
         setError(err.message || 'An error occurred while deleting the task');
@@ -98,19 +125,28 @@ const TasksPage: React.FC = () => {
       const taskToUpdate = tasks.find(task => task.id === id);
       if (!taskToUpdate) return;
 
-      const formData = {
+      // Transform frontend model to backend model (status -> completed)
+      const transformedData = {
         ...taskToUpdate,
-        status
+        status,
+        completed: status === 'done' // Convert status to completed boolean
       };
 
-      const response = await apiClient.put<Task>(`/api/tasks/${id}`, formData);
+      const response = await apiClient.put<Task>(`/api/v1/tasks/${id}`, transformedData);
 
-      if (response.data.success) {
+      if (response.success) {
+        // Transform backend response to frontend model
+        const updatedTask = {
+          ...response.data,
+          status: response.data.completed ? 'done' : 'todo', // Map completed boolean to status
+          createdAt: new Date(response.data.createdAt), // Ensure date objects
+          updatedAt: new Date(response.data.updatedAt || response.data.createdAt), // Ensure date objects
+        };
         setTasks(tasks.map(task =>
-          task.id === id ? response.data.data : task
+          task.id === id ? updatedTask : task
         ));
       } else {
-        setError(response.data.message || 'Failed to update task status');
+        setError(response.message || response.error || 'Failed to update task status');
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred while updating task status');

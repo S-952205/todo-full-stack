@@ -21,7 +21,7 @@ class UserCreate(SQLModel):
     """Model for creating a new user."""
     email: str = Field(regex=r'^[^@]+@[^@]+\.[^@]+$')  # Basic email validation
     name: str = Field(min_length=1, max_length=100)
-    password: str = Field(min_length=8)  # Minimum 8 characters
+    password: str = Field(min_length=8, max_length=64)  # Minimum 8, maximum 64 characters to avoid bcrypt limits
 
 
 class UserResponse(SQLModel):
@@ -45,12 +45,12 @@ class TaskBase(SQLModel):
     title: str = Field(min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)
     completed: bool = Field(default=False)
-    user_id: str = Field(index=True)  # Indexed for performance
 
 
 class Task(TaskBase, table=True):
     """Task model representing the database table."""
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)  # Indexed for performance
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -71,6 +71,7 @@ class TaskUpdate(SQLModel):
 class TaskResponse(TaskBase):
     """Model for returning task data in API responses."""
     id: int
+    user_id: str
     created_at: datetime
 
 

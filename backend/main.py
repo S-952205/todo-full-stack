@@ -5,7 +5,7 @@ from routes import auth
 from config import settings
 from sqlmodel import SQLModel
 from db import engine
-from models import Task  # Import models to register them with SQLModel
+from models import Task, User  # Import models to register them with SQLModel
 
 
 # Create database tables on startup
